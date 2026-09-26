@@ -27,11 +27,8 @@
                         {% else %}
                             <span class="badge bg-secondary text-white me-1 px-2 py-1">Inactivo</span>
                         {% endif %}
-                        {% if prenda.disponible %}
-                            <span class="badge badge-soft-success px-3 py-1">Disponible para Venta</span>
-                        {% else %}
-                            <span class="badge badge-soft-danger px-3 py-1">No Disponible</span>
-                        {% endif %}
+                        {# Indicador de disponibilidad comercial insertado mediante componente reutilizable #}
+                        {% include 'store/includes/badge_disponibilidad.html' with prenda=prenda %}
                     </div>
                 </div>
 

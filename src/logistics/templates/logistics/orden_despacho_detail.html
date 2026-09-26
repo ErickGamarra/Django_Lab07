@@ -16,23 +16,8 @@
     <div>
         <div class="d-flex align-items-center gap-2">
             <h1 class="h3 fw-bold mb-0 text-slate-800">Orden de Despacho <code>{{ despacho.codigo }}</code></h1>
-            {% if despacho.estado == 'Entregado' %}
-                <span class="badge bg-success-subtle text-success-emphasis rounded-pill px-3 py-1">
-                    <i class="bi bi-check-circle-fill me-1"></i>{{ despacho.estado }}
-                </span>
-            {% elif despacho.estado == 'En Tránsito' %}
-                <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1">
-                    <i class="bi bi-arrow-repeat me-1"></i>{{ despacho.estado }}
-                </span>
-            {% elif despacho.estado == 'Cancelado' %}
-                <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill px-3 py-1">
-                    <i class="bi bi-x-circle-fill me-1"></i>{{ despacho.estado }}
-                </span>
-            {% else %}
-                <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-3 py-1">
-                    <i class="bi bi-clock me-1"></i>{{ despacho.estado }}
-                </span>
-            {% endif %}
+            {# Componente reutilizable: Insignia de estado del despacho insertada mediante include #}
+            {% include 'logistics/includes/badge_estado_despacho.html' with estado=despacho.estado %}
         </div>
         <p class="text-muted small mb-0 mt-1">
             Destino: <strong>{{ despacho.sucursal_destino.nombre }}</strong> ({{ despacho.sucursal_destino.ciudad }}) |
@@ -122,43 +107,8 @@
             </thead>
             <tbody>
                 {% for d in despacho.detalles.all %}
-                <tr>
-                    <td class="ps-3">
-                        <a href="{% url 'logistics:material_detail' d.material.pk %}" class="fw-bold text-dark text-decoration-none">
-                            <i class="bi bi-box-seam me-1 text-primary"></i>{{ d.material.nombre }}
-                        </a>
-                        <small class="text-muted d-block">{{ d.material.categoria.nombre }}</small>
-                    </td>
-                    <td>
-                        <span class="badge bg-light text-dark border">
-                            <code>{{ d.lote_produccion }}</code>
-                        </span>
-                    </td>
-                    <td class="text-center fw-bold">
-                        <span class="badge bg-primary-subtle text-primary fs-6 px-3 py-1 rounded-pill">
-                            {{ d.cantidad_despachada }} {{ d.material.unidad_medida }}
-                        </span>
-                    </td>
-                    <td class="text-end font-monospace">
-                        S/ {{ d.costo_unitario_historico|floatformat:2 }}
-                    </td>
-                    <td class="text-end fw-bold text-success font-monospace">
-                        S/ {{ d.subtotal|floatformat:2 }}
-                    </td>
-                    <td class="small text-muted">
-                        {{ d.observaciones|default:"—" }}
-                    </td>
-                    <td class="text-end pe-3">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'logistics:detalle_despacho_update' d.pk %}" class="btn btn-outline-secondary" title="Editar este ítem (CRUD Update)">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="{% url 'logistics:detalle_despacho_delete' d.pk %}" class="btn btn-outline-danger" title="Eliminar este ítem (CRUD Delete)">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                    {# Componente reutilizable: Fila del modelo intermedio DetalleDespacho #}
+                    {% include 'logistics/includes/detalle_despacho_row.html' with d=d mostrar_observaciones=True %}
                 {% empty %}
                 <tr>
                     <td colspan="7" class="text-center py-5 text-muted">

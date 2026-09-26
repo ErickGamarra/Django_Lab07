@@ -59,47 +59,8 @@
             </thead>
             <tbody>
                 {% for d in detalles %}
-                <tr>
-                    <td class="ps-3 text-muted"><code>#{{ d.id }}</code></td>
-                    <td>
-                        <a href="{% url 'logistics:orden_despacho_detail' d.despacho.pk %}" class="fw-bold text-decoration-none">
-                            <code>{{ d.despacho.codigo }}</code>
-                        </a>
-                        <small class="text-muted d-block">{{ d.despacho.sucursal_destino.nombre }}</small>
-                    </td>
-                    <td>
-                        <a href="{% url 'logistics:material_detail' d.material.pk %}" class="fw-semibold text-dark text-decoration-none">
-                            {{ d.material.nombre }}
-                        </a>
-                        <small class="text-muted d-block">{{ d.material.categoria.nombre }}</small>
-                    </td>
-                    <td>
-                        <span class="badge bg-light text-dark border">
-                            <code>{{ d.lote_produccion }}</code>
-                        </span>
-                    </td>
-                    <td class="text-center fw-bold">
-                        <span class="badge bg-primary-subtle text-primary rounded-pill px-3">
-                            {{ d.cantidad_despachada }} {{ d.material.unidad_medida }}
-                        </span>
-                    </td>
-                    <td class="text-end font-monospace">
-                        S/ {{ d.costo_unitario_historico|floatformat:2 }}
-                    </td>
-                    <td class="text-end fw-bold text-success font-monospace">
-                        S/ {{ d.subtotal|floatformat:2 }}
-                    </td>
-                    <td class="text-end pe-3">
-                        <div class="btn-group btn-group-sm">
-                            <a href="{% url 'logistics:detalle_despacho_update' d.pk %}" class="btn btn-outline-secondary" title="Editar este ítem (CRUD Update)">
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                            <a href="{% url 'logistics:detalle_despacho_delete' d.pk %}" class="btn btn-outline-danger" title="Eliminar este ítem (CRUD Delete)">
-                                <i class="bi bi-trash"></i>
-                            </a>
-                        </div>
-                    </td>
-                </tr>
+                    {# Componente reutilizable: Fila del modelo intermedio DetalleDespacho #}
+                    {% include 'logistics/includes/detalle_despacho_row.html' with d=d mostrar_despacho=True %}
                 {% empty %}
                 <tr>
                     <td colspan="8" class="text-center py-5 text-muted">

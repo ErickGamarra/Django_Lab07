@@ -1,0 +1,62 @@
+{# Componente reutilizable: Fila de presentación del modelo intermedio DetalleDespacho (Relación N:M) #}
+<tr>
+    {% if mostrar_despacho %}
+    <td class="ps-3 text-muted"><code>#{{ d.id }}</code></td>
+    <td>
+        <a href="{% url 'logistics:orden_despacho_detail' d.despacho.pk %}" class="fw-bold text-decoration-none">
+            <code>{{ d.despacho.codigo }}</code>
+        </a>
+        <small class="text-muted d-block">{{ d.despacho.sucursal_destino.nombre }}</small>
+    </td>
+    {% endif %}
+
+    {# Insumo Textil (FK) con categoría asignada #}
+    <td class="{% if not mostrar_despacho %}ps-3{% endif %}">
+        <a href="{% url 'logistics:material_detail' d.material.pk %}" class="fw-bold text-dark text-decoration-none">
+            <i class="bi bi-box-seam me-1 text-primary"></i>{{ d.material.nombre }}
+        </a>
+        <small class="text-muted d-block">{{ d.material.categoria.nombre }}</small>
+    </td>
+
+    {# Lote Textil: atributo propio de la relación intermedia #}
+    <td>
+        <span class="badge bg-light text-dark border">
+            <code>{{ d.lote_produccion }}</code>
+        </span>
+    </td>
+
+    {# Cantidad despachada: atributo propio de la relación intermedia #}
+    <td class="text-center fw-bold">
+        <span class="badge bg-primary-subtle text-primary fs-6 px-3 py-1 rounded-pill">
+            {{ d.cantidad_despachada }} {{ d.material.unidad_medida }}
+        </span>
+    </td>
+
+    {# Costo unitario histórico: atributo propio formateado #}
+    <td class="text-end font-monospace">
+        S/ {{ d.costo_unitario_historico|floatformat:2 }}
+    </td>
+
+    {# Subtotal calculado del ítem despachado #}
+    <td class="text-end fw-bold text-success font-monospace">
+        S/ {{ d.subtotal|floatformat:2 }}
+    </td>
+
+    {% if mostrar_observaciones %}
+    <td class="small text-muted">
+        {{ d.observaciones|default:"—" }}
+    </td>
+    {% endif %}
+
+    {# Acciones CRUD del modelo intermedio #}
+    <td class="text-end pe-3">
+        <div class="btn-group btn-group-sm">
+            <a href="{% url 'logistics:detalle_despacho_update' d.pk %}" class="btn btn-outline-secondary" title="Editar este ítem (CRUD Update)">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'logistics:detalle_despacho_delete' d.pk %}" class="btn btn-outline-danger" title="Eliminar este ítem (CRUD Delete)">
+                <i class="bi bi-trash"></i>
+            </a>
+        </div>
+    </td>
+</tr>

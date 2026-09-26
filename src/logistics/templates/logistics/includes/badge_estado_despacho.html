@@ -1,0 +1,18 @@
+{# Componente reutilizable: Insignia visual con estilo contextual según el estado de la Orden de Despacho #}
+{% if estado == 'Entregado' %}
+    <span class="badge bg-success-subtle text-success-emphasis rounded-pill px-3 py-1">
+        <i class="bi bi-check-circle-fill me-1"></i>{{ estado }}
+    </span>
+{% elif estado == 'En Tránsito' %}
+    <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-3 py-1">
+        <i class="bi bi-arrow-repeat me-1"></i>{{ estado }}
+    </span>
+{% elif estado == 'Cancelado' %}
+    <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill px-3 py-1">
+        <i class="bi bi-x-circle-fill me-1"></i>{{ estado }}
+    </span>
+{% else %}
+    <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-3 py-1">
+        <i class="bi bi-clock me-1"></i>{{ estado }}
+    </span>
+{% endif %}

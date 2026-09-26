@@ -1,11 +1,12 @@
 {% extends 'base.html' %}
 
+{# Título dinámico inyectado desde la vista store:list #}
 {% block title %}{{ titulo }}{% endblock %}
 
 {% block content %}
 <div class="container my-2">
 
-    <!-- Tarjetas de Métricas Rápidas (KPIs) -->
+    {# Panel de métricas e indicadores clave (KPIs): Catálogo total, stock global y registros activos #}
     <div class="row g-3 mb-4">
         <div class="col-md-4">
             <div class="card shadow-sm p-3 bg-white border-0">
@@ -48,12 +49,12 @@
         </div>
     </div>
 
-    <!-- Barra de Búsqueda y Filtros -->
+    {# Formulario de filtros por GET: búsqueda por coincidencia textual, público objetivo y categoría #}
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body p-3 bg-white rounded-3">
             <form method="get" action="{% url 'store:list' %}" class="row g-2 align-items-center">
                 
-                <!-- Input de búsqueda por texto -->
+                {# Campo de búsqueda de texto: conserva el valor buscado mediante la variable query #}
                 <div class="col-lg-5 col-md-4">
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0 text-muted">
@@ -67,7 +68,7 @@
                     </div>
                 </div>
 
-                <!-- Selector de Público / Tipo -->
+                {# Selector de público: evalúa condicionalmente cada opción para mantener la selección activa #}
                 <div class="col-lg-3 col-md-3">
                     <select name="tipo" class="form-select bg-light">
                         <option value="">Todos los Públicos</option>
@@ -78,7 +79,7 @@
                     </select>
                 </div>
 
-                <!-- Selector de Categoría -->
+                {# Selector de categoría: conserva el filtro seleccionado entre peticiones GET #}
                 <div class="col-lg-2 col-md-3">
                     <select name="categoria" class="form-select bg-light">
                         <option value="">Todas las Categorías</option>
@@ -91,7 +92,7 @@
                     </select>
                 </div>
 
-                <!-- Botones de Acción -->
+                {# Botones de acción: envío del formulario y reseteo condicional si hay filtros aplicados #}
                 <div class="col-lg-2 col-md-2 d-flex gap-1">
                     <button type="submit" class="btn btn-dark w-100 fw-semibold">
                         <i class="bi bi-funnel me-1"></i> Filtrar
@@ -106,7 +107,7 @@
         </div>
     </div>
 
-    <!-- Módulo Lab 04: Vistas de Demostración ORM Optimizadas -->
+    {# Enlaces rápidos a vistas de demostración ORM con consultas optimizadas #}
     <div class="card bg-white border-0 shadow-sm mb-3">
         <div class="card-body py-2 px-3 d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div class="d-flex align-items-center">
@@ -124,14 +125,14 @@
         </div>
     </div>
 
-    <!-- Indicador de Resultados -->
+    {# Contador de resultados: usa el filtro pluralize para adaptar el texto en singular o plural #}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <span class="text-muted small fw-medium">
             Mostrando <strong>{{ total_resultados }}</strong> prenda{{ total_resultados|pluralize:"s" }}
         </span>
     </div>
 
-    <!-- Tabla Principal -->
+    {# Tabla con el listado detallado de prendas registradas #}
     <div class="card shadow-sm border-0 overflow-hidden">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -149,17 +150,20 @@
                     </tr>
                 </thead>
                 <tbody>
+                    {# Iteración sobre la colección de prendas devuelta por la vista #}
                     {% for prenda in prendas %}
                     <tr>
                         <td class="ps-3 fw-bold text-muted">#{{ prenda.id }}</td>
                         <td>
-                            <span class="fw-bold text-dark d-block mb-0">{{ prenda.nombre }}</span>
+                            {# Presentación del nombre de la prenda en mayúsculas mediante el filtro upper #}
+                            <span class="fw-bold text-dark d-block mb-0">{{ prenda.nombre|upper }}</span>
                             <small class="text-muted"><i class="bi bi-bookmark me-1"></i>{{ prenda.categoria }}</small>
                         </td>
                         <td>
                             <span class="badge bg-light text-dark border px-2 py-1">{{ prenda.marca }}</span>
                         </td>
                         <td>
+                            {# Asignación dinámica de distintivos de color según el público objetivo #}
                             {% if prenda.tipo == 'Hombre' %}
                                 <span class="badge badge-soft-primary px-2 py-1">Hombre</span>
                             {% elif prenda.tipo == 'Mujer' %}
@@ -173,6 +177,7 @@
                         <td><span class="badge bg-light text-dark border fw-medium">{{ prenda.talla }}</span></td>
                         <td class="fw-bold text-success">S/ {{ prenda.precio|floatformat:2 }}</td>
                         <td>
+                            {# Control de stock: muestra alerta visual si está agotado o el número de unidades #}
                             {% if prenda.stock == 0 %}
                                 <span class="badge bg-danger">Agotado</span>
                             {% else %}
@@ -180,23 +185,18 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if prenda.disponible %}
-                                <span class="badge badge-soft-success px-2 py-1">
-                                    <i class="bi bi-check-circle-fill me-1"></i>Disponible
-                                </span>
-                            {% else %}
-                                <span class="badge badge-soft-secondary px-2 py-1">
-                                    <i class="bi bi-x-circle-fill me-1"></i>No Disp.
-                                </span>
-                            {% endif %}
+                            {# Estado de disponibilidad comercial insertado mediante componente reutilizable #}
+                            {% include 'store/includes/badge_disponibilidad.html' with prenda=prenda %}
                         </td>
                         <td class="text-end pe-3">
+                            {# Enlace al detalle del producto enviando su clave primaria #}
                             <a href="{% url 'store:detail' prenda.id %}" class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm">
                                 Detalle
                             </a>
                         </td>
                     </tr>
                     {% empty %}
+                    {# Bloque alternativo cuando la consulta no retorna ninguna prenda #}
                     <tr>
                         <td colspan="9" class="text-center py-5">
                             <i class="bi bi-search text-muted fs-1 d-block mb-3"></i>

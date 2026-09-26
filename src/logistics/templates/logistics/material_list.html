@@ -51,17 +51,20 @@
                 {% for m in materiales %}
                 <tr>
                     <td class="ps-3 text-muted"><code>#{{ m.id }}</code></td>
+                    {# Enlace de navegación hacia el detalle del material con nombre transformado en mayúsculas #}
                     <td class="fw-semibold text-dark">
                         <a href="{% url 'logistics:material_detail' m.pk %}" class="text-decoration-none text-dark">
                             <i class="bi bi-box-seam me-1 text-primary"></i>
-                            {{ m.nombre }}
+                            {{ m.nombre|upper }}
                         </a>
                     </td>
+                    {# Relación 1:N: Muestra el nombre de la categoría maestra asignada al insumo #}
                     <td>
                         <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle">
                             <i class="bi bi-tag-fill me-1"></i>{{ m.categoria.nombre }}
                         </span>
                     </td>
+                    {# Relación 1:1: Verificación de existencia de Ficha Técnica asociada #}
                     <td>
                         {% if m.ficha_tecnica %}
                             <a href="{% url 'logistics:material_detail' m.pk %}" class="badge bg-primary-subtle text-primary border border-primary-subtle text-decoration-none" title="{{ m.ficha_tecnica.composicion }} | {{ m.ficha_tecnica.densidad_gramaje }}">
@@ -72,7 +75,9 @@
                         {% endif %}
                     </td>
                     <td><code>{{ m.unidad_medida }}</code></td>
-                    <td class="fw-semibold text-slate-700">S/ {{ m.precio_unitario }}</td>
+                    {# Filtro floatformat: Formateo de costo monetario a 2 decimales #}
+                    <td class="fw-semibold text-slate-700">S/ {{ m.precio_unitario|floatformat:2 }}</td>
+                    {# Control de inventario: alternancia condicional según stock disponible #}
                     <td>
                         {% if m.stock > 0 %}
                             <span class="badge bg-success-subtle text-success border border-success-subtle">

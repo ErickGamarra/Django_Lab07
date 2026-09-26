@@ -1,182 +1,153 @@
-# Laboratorio 04 — Modelado Avanzado de Relaciones, Optimización ORM y Migraciones
+# Laboratorio 06 — Herencia, Filtros y Reutilización de Templates con Django Template Language (DTL)
 
 **Curso:** Desarrollo de Aplicaciones Empresariales  
 **Institución:** Tecsup  
 **Sección:** 4 - C24 - Sección CD  
 **Docente:** Yunior Bestard Aroche  
 **Integrantes del Equipo:**
-1. **Erick Arturo Gamarra Mundaca**
-2. **Jesús Enrique Rocha Bobadilla**  
+1. **Jesús Enrique Rocha Bobadilla**
+2. **Erick Arturo Gamarra Mundaca**  
 **Proyecto:** **UrbanTrend** — Plataforma Textil Streetwear y Sistema Logístico Avanzado con Django ORM y SQLite  
-**Repositorio GitHub:** [https://github.com/ErickGamarra/Django_Lab04](https://github.com/ErickGamarra/Django_Lab04)
+**Repositorio GitHub:** [https://github.com/Jesus-Rocha-B/Django_Lab06.git](https://github.com/Jesus-Rocha-B/Django_Lab06.git)
 
 ---
 
-## 🎯 1. Objetivo del Laboratorio 04 (Parte 2)
+## 🎯 1. Objetivo del Laboratorio 06
 
-Ampliar la arquitectura persistente investigada en la Semana 3 para el módulo logístico de **UrbanTrend**, incorporando los tres tipos de relaciones fundamentales que ofrece Django ORM (**1:1**, **1:N** y **N:M con modelo intermedio `through`**) y cumpliendo rigurosamente los 9 criterios de evaluación del laboratorio:
-* **Mantenimiento del dominio:** Misma problemática de insumos textiles y distribución a sucursales.
-* **Integridad referencial protegida:** `on_delete=models.PROTECT` en la clasificación de catálogo para salvaguardar el inventario físico y contable.
-* **Relación 1:1 con automatización:** Extensión técnica (`FichaTecnicaMaterial`) generada automáticamente mediante señales `post_save`.
-* **Relación N:M con atributos propios:** Modelo intermedio `DetalleDespacho` con 4 campos transaccionales propios (`cantidad_despachada`, `costo_unitario_historico`, `lote_produccion`, `observaciones`).
-* **Optimización ORM:** Resolución del cuello de botella de consultas $N+1$ mediante `select_related()` (uniones SQL JOIN) y `prefetch_related()` (consultas por lotes con cláusula `IN`).
-* **CRUD funcional del modelo intermedio:** Capacidad operativa de crear, listar, editar y eliminar registros de la relación intermedia.
-
----
-
-## 🏗️ 2. Modelo de Datos Ampliado (8 Entidades)
-
-El modelo de datos creció de 5 a **8 entidades** completamente estructuradas en SQLite:
-
-| # | Entidad | Tipo / Rol | Descripción de Negocio |
-|---|---------|------------|------------------------|
-| 1 | **`Proveedor`** | Independiente | Directorio homologado de socios comerciales (`ruc`, `razon_social`, `telefono`, `correo`). |
-| 2 | **`Sucursal`** | Independiente | Puntos de venta y almacenes físicos receptores (`nombre`, `direccion`, `ciudad`, `capacidad_almacen`). |
-| 3 | **`Transportista`** | Independiente | Flota de transporte logístico asignada a traslados (`empresa`, `placa`, `tipo_vehiculo`, `activo`). |
-| 4 | **`CategoriaInsumo`** | Relacionada (1:N - Lado 1) | Familias maestras de materia prima textil (`nombre`, `descripcion`). |
-| 5 | **`Material`** | Relacionada (1:N - Lado N) | Insumos de confección vinculados a categoría mediante `ForeignKey` protegida (`on_delete=models.PROTECT`). |
-| 6 | **`FichaTecnicaMaterial`** | **NUEVA (Relación 1:1)** | Especificaciones de calidad e ingeniería textil (`composicion`, `densidad_gramaje`, `encogimiento`, `temperatura_lavado`, `cuidados`). |
-| 7 | **`OrdenDespacho`** | **NUEVA (Cabecera N:M)** | Guía de traslado hacia una sucursal con transportista asignado (`codigo`, `estado`, `fecha_emision`, `observaciones`). |
-| 8 | **`DetalleDespacho`** | **NUEVA (Modelo Intermedio N:M)** | Modelo intermedio `through` que congela la transacción del envío con atributos propios. |
+Refactorizar y optimizar la capa de presentación visual de las aplicaciones **`store`** (catálogo streetwear) y **`logistics`** (gestión de abastecimiento e insumos) mediante las mejores prácticas del **Django Template Language (DTL)**:
+* **Herencia de plantillas (`{% extends %}` y `{% block %}`):** Centralizar la estructura HTML5, estilos responsivos con Bootstrap 5.3 y elementos comunes en una plantilla maestra ([`base.html`](file:///d:/Django/Lab06/Django_Lab06/src/core/templates/base.html)), eliminando duplicidad.
+* **Transformación y formato con filtros de Django:** Aplicar filtros estándar como `|upper`, `|floatformat:2`, `|date` y `|pluralize` para estandarizar la presentación de datos numéricos y cadenas.
+* **Modularidad y principio DRY con `{% include %}`:** Extraer componentes visuales repetitivos a fragmentos reutilizables en subcarpetas `includes/`.
+* **Documentación técnica de servidor (`{# ... #}`):** Documentar la lógica condicional compleja de las plantillas sin exponer notas internas en el DOM del cliente.
+* **Seguridad y mitigación de XSS:** Validar el sistema de auto-escape nativo de Django ante entradas con caracteres maliciosos (`<script>`).
 
 ---
 
-## 📊 3. Diagrama Entidad-Relación (Relaciones 1:1, 1:N y N:M)
+## 🏗️ 2. Arquitectura de Plantillas y Herencia
+
+Todas las pantallas de la solución heredan de [`core/templates/base.html`](file:///d:/Django/Lab06/Django_Lab06/src/core/templates/base.html), la cual establece:
+1. Cabecera HTML5, metadatos y fuentes tipográficas Google Fonts (*Inter*).
+2. Estilos globales con CDN de **Bootstrap 5.3.3** e iconos **Bootstrap Icons 1.11.3**.
+3. Barra de navegación principal (*Navbar*) con enlaces directos al catálogo y al menú desplegable logístico.
+4. Contenedor principal con soporte de mensajes flash (`django.contrib.messages`) y bloque extensible `{% block content %}`.
+5. Pie de página unificado y carga de scripts al cierre del `<body>`.
 
 ```text
-┌───────────────────────────┐         ┌───────────────────────────┐
-│      CategoriaInsumo      │         │         Proveedor         │
-│ ───────────────────────── │         │ ───────────────────────── │
-│  PK  id                   │         │  PK  id                   │
-│      nombre (UQ)          │         │      ruc (UQ, 11 dígitos) │
-│      descripcion          │         │      razon_social         │
-└─────────────┬─────────────┘         │      telefono             │
-              │ 1                     │      correo               │
-              │ (on_delete=PROTECT)   └───────────────────────────┘
-              │ 
-              │ N
-┌─────────────▼─────────────┐         ┌───────────────────────────┐
-│         Material          │ 1     1 │   FichaTecnicaMaterial    │
-│ ───────────────────────── │─────────│ ───────────────────────── │
-│  PK  id                   │(1:1)    │  PK  id                   │
-│  FK  categoria_id         │         │  FK  material_id (1:1 UQ) │
-│      nombre               │         │      composicion          │
-│      unidad_medida        │         │      densidad_gramaje     │
-│      precio_unitario      │         │      tolerancia_encogim.  │
-│      stock                │         │      temperatura_lavado   │
-└─────────────┬─────────────┘         │      cuidados_adicionales │
-              │                       │      fecha_emision        │
-              │                       └───────────────────────────┘
-              │ N
-┌─────────────▼─────────────┐
-│      DetalleDespacho      │ ◄── MODELO INTERMEDIO (through)
-│ ───────────────────────── │     Atributos propios de la relación:
-│  PK  id                   │     - cantidad_despachada (int > 0)
-│  FK  despacho_id ─────────┐     - costo_unitario_historico (S/)
-│  FK  material_id          │     - lote_produccion (trazabilidad)
-│      cantidad_despachada  │     - observaciones
-│      costo_unitario_hist. │
-│      lote_produccion      │
-│      observaciones        │
-└───────────────────────────┘
-              ▲ N
-              │
-              │ 1
-┌─────────────┴─────────────┐         ┌───────────────────────────┐
-│       OrdenDespacho       │         │         Sucursal          │
-│ ───────────────────────── │ N     1 │ ───────────────────────── │
-│  PK  id                   │─────────│  PK  id                   │
-│      codigo (UQ)          │         │      nombre               │
-│  FK  sucursal_destino_id ─┘         │      direccion            │
-│  FK  transportista_id ────┐         │      ciudad               │
-│      fecha_emision        │         │      capacidad_almacen    │
-│      estado               │         └───────────────────────────┘
-│      observaciones        │         ┌───────────────────────────┐
-│      materiales (M2M)     │ N     1 │       Transportista       │
-└───────────────────────────┘─────────│ ───────────────────────── │
-                                      │  PK  id                   │
-                                      │      empresa              │
-                                      │      placa (UQ)           │
-                                      │      tipo_vehiculo        │
-                                      │      activo               │
-                                      └───────────────────────────┘
+src/
+├── core/templates/
+│   └── base.html                          ◄── PLANTILLA PADRE (Layout Maestro)
+├── store/templates/store/
+│   ├── prenda_list.html                   ◄── HEREDA de base.html (Catálogo)
+│   ├── prenda_detail.html                 ◄── HEREDA de base.html (Detalle Prenda)
+│   ├── prenda_form.html                   ◄── HEREDA de base.html (Formulario Prenda)
+│   └── includes/
+│       └── badge_disponibilidad.html      ◄── COMPONENTE REUTILIZABLE (Include)
+└── logistics/templates/logistics/
+    ├── material_list.html                 ◄── HEREDA de base.html (Listado Insumos)
+    ├── orden_despacho_list.html           ◄── HEREDA de base.html (Listado Despachos)
+    ├── orden_despacho_detail.html         ◄── HEREDA de base.html (Detalle N:M)
+    ├── detalle_despacho_list.html         ◄── HEREDA de base.html (CRUD Intermedio)
+    └── includes/
+        ├── badge_estado_despacho.html     ◄── COMPONENTE REUTILIZABLE (Include)
+        └── detalle_despacho_row.html      ◄── COMPONENTE REUTILIZABLE N:M (Include)
 ```
 
 ---
 
-## ⚡ 4. Optimización ORM y Mitigación del Problema $N+1$
+## 🧩 3. Componentes Reutilizables Extraídos con `{% include %}`
 
-El problema de consultas $N+1$ se genera cuando una vista consulta un registro maestro y luego dispara una consulta SQL individual por cada fila hija al renderizar en el template. En **Laboratorio 04** se implementaron dos técnicas avanzadas del ORM:
+Se crearon e implementaron componentes modulares para cumplir el principio **DRY (Don't Repeat Yourself)**:
 
-### 1. `select_related()` (Uniones SQL JOIN en BD)
-Utilizado para relaciones directas `ForeignKey` y `OneToOneField`. Ejecuta un solo `INNER JOIN` o `LEFT OUTER JOIN` en el motor SQLite:
-```python
-# Consulta optimizada en logistics/views.py (material_list):
-materiales = Material.objects.select_related('categoria', 'ficha_tecnica').all()
-```
-* **Medición empírica:** **1 sola consulta SQL** ejecutada para recuperar simultáneamente los 8 materiales, sus categorías y sus fichas técnicas de laboratorio. (Sin optimización: $1 + 8 + 8 = 17$ consultas).
-
-### 2. `prefetch_related()` (Consultas por lotes con cláusula `IN`)
-Utilizado para relaciones de conjunto (1:N inversas y N:M con tablas intermedias):
-```python
-# Consulta optimizada en logistics/views.py (orden_despacho_list):
-despachos = OrdenDespacho.objects.select_related(
-    'sucursal_destino', 'transportista'
-).prefetch_related(
-    'detalles__material'
-).all()
-```
-* **Medición empírica:** Exactamente **3 consultas SQL** por lotes para traer la orden completa, sus destinos, transportistas y el desglose de insumos despachados con sus costos históricos.
+| Componente | Archivo Creado | Templates donde se reutiliza | Qué resuelve |
+| :--- | :--- | :--- | :--- |
+| **Badge de Disponibilidad** | `store/includes/badge_disponibilidad.html` | [`prenda_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/store/templates/store/prenda_list.html), [`prenda_detail.html`](file:///d:/Django/Lab06/Django_Lab06/src/store/templates/store/prenda_detail.html) | Estandariza la insignia comercial que indica si una prenda está disponible o agotada según su stock. |
+| **Insignia Estado de Despacho** | `logistics/includes/badge_estado_despacho.html` | [`orden_despacho_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/orden_despacho_list.html), [`orden_despacho_detail.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/orden_despacho_detail.html) | Conmuta colores contextuales de Bootstrap según el estado de la guía (`Borrador`, `En Tránsito`, `Entregado`, `Cancelado`). |
+| **Fila Modelo Intermedio N:M** | `logistics/includes/detalle_despacho_row.html` | [`orden_despacho_detail.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/orden_despacho_detail.html), [`detalle_despacho_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/detalle_despacho_list.html) | Renderiza de manera homogénea las instancias intermedias de `DetalleDespacho` con sus atributos propios (lote, cantidad, costo unitario histórico, subtotal y botones de acción CRUD). |
 
 ---
 
-## 🛠️ 5. CRUD del Modelo Intermedio (`DetalleDespacho`)
+## 🎨 4. Aplicación de Filtros de Django (DTL)
 
-Cumpliendo el **Criterio 9**, el modelo intermedio dispone de interfaz web completa para gestionar sus atributos:
+Se incorporaron filtros sobre campos ya existentes para enriquecer la presentación visual sin alterar la base de datos:
 
-* **CREATE (`/logistics/detalles-despacho/nuevo/`):** Permite incorporar insumos textiles a una orden de despacho congelando su precio y lote.
-* **READ (`/logistics/detalles-despacho/`):** Listado consolidado de despachos intermedios con cálculo de subtotales.
-* **UPDATE (`/logistics/detalles-despacho/editar/<id>/`):** Rectificación de cantidades o partidas de tela.
-* **DELETE (`/logistics/detalles-despacho/eliminar/<id>/`):** Desvinculación segura con método HTTP `POST`.
+1. **`|upper` (Mayúsculas sostenidas):**
+   * `{{ prenda.nombre|upper }}` en [`prenda_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/store/templates/store/prenda_list.html).
+   * `{{ m.nombre|upper }}` en [`material_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/material_list.html).
+2. **`|floatformat:2` (Formateo monetario):**
+   * `S/ {{ prenda.precio|floatformat:2 }}` en el catálogo de prendas.
+   * `S/ {{ m.precio_unitario|floatformat:2 }}` en el costo unitario de insumos textiles.
+   * `S/ {{ d.subtotal|floatformat:2 }}` en los ítems despachados.
+3. **`|date` (Formateo de fechas):**
+   * `{{ d.fecha_emision|date:"d/m/Y H:i" }}` en las guías de remisión y órdenes logísticas.
+4. **`|pluralize` y `|length` (Concordancia gramatical):**
+   * `{{ total_resultados }} prenda{{ total_resultados|pluralize:"s" }}` adaptando automáticamente singular o plural.
 
 ---
 
-## 🚀 6. Instalación y Ejecución Local
+## 📝 5. Documentación con Comentarios de Servidor `{# #}`
 
-1. **Clonar el repositorio:**
-   ```bash
-   git clone https://github.com/ErickGamarra/Django_Lab04.git
-   cd Django_Lab04
-   ```
+Se añadieron comentarios con sintaxis `{# ... #}` en secciones clave de las plantillas:
+* Explicación de la asignación condicional de distintivos por segmento de público (`Hombre`, `Mujer`, `Niños`, `Unisex`).
+* Documentación de la comprobación de inventario crítico para alternar entre el badge de *Agotado* y las unidades físicas.
+* Documentación del recorrido de relaciones ORM **1:N** (Material ➔ Categoría) y **1:1** (Material ➔ Ficha Técnica).
+* **Diferencia clave con comentarios HTML:** A diferencia de `<!-- -->`, los comentarios con `{# #}` son eliminados por Django en el servidor y **nunca llegan al código fuente del navegador**.
 
-2. **Crear y activar el entorno virtual:**
-   ```bash
-   python -m venv venv
-   # En Windows:
-   venv\Scripts\activate
-   ```
+---
 
-3. **Instalar dependencias:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## 🛡️ 6. Verificación de Seguridad y Auto-Escape XSS
 
-4. **Aplicar migraciones sobre SQLite:**
-   ```bash
-   cd src
-   python manage.py migrate
-   python manage.py showmigrations logistics
-   ```
+Se realizó una prueba de inyección de código mediante el ingreso de:
+```html
+<script>alert("XSS")</script>
+```
+* **Comportamiento en la interfaz:** El navegador lo presenta como texto plano literal `<SCRIPT>ALERT("XSS")</SCRIPT>` sin ejecutar el script.
+* **Comprobación en el código fuente (`Ctrl + U`):**
+  ```html
+  <span class="fw-bold text-dark d-block mb-0">&lt;SCRIPT&gt;ALERT(&quot;XSS&quot;)&lt;/SCRIPT&gt;</span>
+  ```
+* **Conclusión:** Django escapa por defecto los caracteres peligrosos (`<` a `&lt;`, `>` a `&gt;`, `"` a `&quot;`), neutralizando los ataques de **Cross-Site Scripting**.
 
-5. **Poblar datos iniciales de prueba (Seed):**
-   ```bash
-   python seed_logistics.py
-   ```
+---
 
-6. **Iniciar el servidor de desarrollo:**
-   ```bash
-   python manage.py runserver
-   ```
-   * **Dashboard Logístico:** [http://127.0.0.1:8000/logistics/](http://127.0.0.1:8000/logistics/)
-   * **Catálogo de Tienda (Parte 1):** [http://127.0.0.1:8000/store/](http://127.0.0.1:8000/store/)
-   * **Panel Administrativo:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+## ⚖️ 7. Comparativa: Templates Refactorizados vs. Django Admin
+
+| Criterio | Django Admin (Semana 5) | Aplicación Refactorizada (Semana 6) |
+| :--- | :--- | :--- |
+| **Audiencia** | Uso interno exclusivo para administradores técnicos (`is_staff`). | Interfaz pública y amigable orientada a clientes y operarios de almacén. |
+| **Diseño y UX** | Monocromático, rígido y tabular. | Moderno con **Bootstrap 5**, micro-interacciones, diseño responsivo y KPIs en tiempo real. |
+| **Relaciones Complejas** | Formularios planos o inlines tabulares difíciles de auditar. | Fichas consolidadas con tarjetas de resumen financiero, atributos del modelo intermedio N:M anidados y navegación visual. |
+| **Mantenibilidad (DRY)** | Sobreescritura compleja de plantillas internas de Django. | **Modularidad pura**: modificación centralizada de componentes reutilizables mediante `{% include %}`. |
+| **Seguridad** | Expone la estructura de tablas y metadatos del sistema. | **Principio de menor privilegio**: URLs públicas desacopladas (`/ropa/`, `/logistics/`) sin acceso al panel administrativo. |
+
+---
+
+## 🚀 8. Puesta en Marcha Local
+
+```powershell
+# 1. Clonar el repositorio
+git clone https://github.com/Jesus-Rocha-B/Django_Lab06.git
+cd Django_Lab06
+
+# 2. Crear y activar entorno virtual
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+
+# 3. Instalar dependencias
+pip install -r requirements.txt
+
+# 4. Aplicar migraciones SQLite y sembrar datos de prueba
+cd src
+python manage.py migrate
+python seed_prendas.py
+python seed_logistics.py
+
+# 5. Iniciar servidor de desarrollo
+python manage.py runserver
+```
+
+* **Catálogo de Prendas (App Store):** [http://127.0.0.1:8000/ropa/](http://127.0.0.1:8000/ropa/)
+* **Módulo de Logística (App Logistics):** [http://127.0.0.1:8000/logistics/](http://127.0.0.1:8000/logistics/)
+* **Listado de Insumos Textiles:** [http://127.0.0.1:8000/logistics/materiales/](http://127.0.0.1:8000/logistics/materiales/)
+* **Detalle de Orden de Despacho (N:M):** [http://127.0.0.1:8000/logistics/despachos/1/](http://127.0.0.1:8000/logistics/despachos/1/)
+* **CRUD de Modelo Intermedio:** [http://127.0.0.1:8000/logistics/detalles-despacho/](http://127.0.0.1:8000/logistics/detalles-despacho/)
+* **Panel Administrativo:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)

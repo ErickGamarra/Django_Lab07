@@ -78,23 +78,8 @@
                         {{ d.fecha_emision|date:"d/m/Y H:i" }}
                     </td>
                     <td>
-                        {% if d.estado == 'Entregado' %}
-                            <span class="badge bg-success-subtle text-success-emphasis rounded-pill px-2 py-1">
-                                <i class="bi bi-check-circle-fill me-1"></i>{{ d.estado }}
-                            </span>
-                        {% elif d.estado == 'En Tránsito' %}
-                            <span class="badge bg-warning-subtle text-warning-emphasis rounded-pill px-2 py-1">
-                                <i class="bi bi-arrow-repeat me-1"></i>{{ d.estado }}
-                            </span>
-                        {% elif d.estado == 'Cancelado' %}
-                            <span class="badge bg-danger-subtle text-danger-emphasis rounded-pill px-2 py-1">
-                                <i class="bi bi-x-circle-fill me-1"></i>{{ d.estado }}
-                            </span>
-                        {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary-emphasis rounded-pill px-2 py-1">
-                                <i class="bi bi-clock me-1"></i>{{ d.estado }}
-                            </span>
-                        {% endif %}
+                        {# Componente reutilizable: Insignia de estado del despacho #}
+                        {% include 'logistics/includes/badge_estado_despacho.html' with estado=d.estado %}
                     </td>
                     <td class="text-center">
                         <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
