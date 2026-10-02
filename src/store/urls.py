@@ -18,4 +18,7 @@ urlpatterns = [
 
     # Lab 7 - Ejercicio 3: Ruta para registro transaccional de pedidos
     path('pedidos/transaccional/', views.pedido_transaccional_create, name='pedido_transaccional_create'),
+    
+    # Lab 7 - Ejercicio 6: Ruta de reporte analítico
+    path('reporte/', views.reporte_store_view, name='reporte_store'),
 ]

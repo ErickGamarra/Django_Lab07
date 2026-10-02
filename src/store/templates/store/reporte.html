@@ -1,0 +1,122 @@
+<!-- Lab 7 - Ejercicio 6: Plantilla del dashboard de reportes -->
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - UrbanTrend{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+        <h1 class="h3 fw-bold text-dark mb-1">{{ titulo }}</h1>
+        <p class="text-muted mb-0">Resumen de inventario, ventas, pedidos y reseñas.</p>
+    </div>
+    <a href="{% url 'store:prenda_list' %}" class="btn btn-outline-primary">
+        <i class="bi bi-arrow-left me-1"></i>Volver al catálogo
+    </a>
+</div>
+
+<!-- Lab 7 - Ejercicio 6: Indicadores KPI globales -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small fw-semibold text-uppercase">Total Prendas</div>
+                <div class="fs-2 fw-bold text-primary">{{ total_prendas|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small fw-semibold text-uppercase">Stock Total</div>
+                <div class="fs-2 fw-bold text-info">{{ stock_total|default:0 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small fw-semibold text-uppercase">Facturación S/</div>
+                <div class="fs-2 fw-bold text-success">{{ facturacion_total|default:0|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-body">
+                <div class="text-muted small fw-semibold text-uppercase">Satisfacción Promedio</div>
+                <div class="fs-2 fw-bold text-warning">
+                    {{ satisfaccion_promedio|default:0|floatformat:1 }} <span class="fs-5">/ 5</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lab 7 - Ejercicio 6: Pedidos agrupados y total por estado -->
+<section class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white py-3">
+        <h2 class="h5 fw-bold mb-0">Pedidos agrupados por Estado</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Estado</th>
+                    <th class="text-center">Cantidad</th>
+                    <th class="text-end pe-4">Total S/</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for grupo in pedidos_por_estado %}
+                <tr>
+                    <td class="ps-4 fw-semibold">{{ grupo.estado }}</td>
+                    <td class="text-center">{{ grupo.cantidad }}</td>
+                    <td class="text-end pe-4">S/ {{ grupo.total|default:0|floatformat:2 }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3" class="text-center text-muted py-4">No hay pedidos registrados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<!-- Lab 7 - Ejercicio 6: Ranking de prendas con métricas agregadas -->
+<section class="card border-0 shadow-sm">
+    <div class="card-header bg-white py-3">
+        <h2 class="h5 fw-bold mb-0">Top Prendas</h2>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-4">Nombre</th>
+                    <th>Precio</th>
+                    <th class="text-center">Reseñas</th>
+                    <th class="text-center">Calificación</th>
+                    <th class="text-center pe-4">Pedidos asociados</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prenda in prendas_metricas %}
+                <tr>
+                    <td class="ps-4 fw-semibold">{{ prenda.nombre }}</td>
+                    <td>S/ {{ prenda.precio|floatformat:2 }}</td>
+                    <td class="text-center">{{ prenda.num_resenas }}</td>
+                    <td class="text-center">
+                        {% if prenda.calificacion_prom is not None %}
+                            {{ prenda.calificacion_prom|floatformat:1 }} / 5
+                        {% else %}
+                            <span class="text-muted">Sin reseñas</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center pe-4">{{ prenda.num_pedidos }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No hay prendas activas para mostrar.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

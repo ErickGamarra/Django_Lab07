@@ -2,7 +2,8 @@ import uuid
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import F, Q
+
+from django.db.models import Avg, Count, DecimalField, F, Q, Sum
 from django.shortcuts import render, redirect
 from django.http import Http404
 from django.db import connection, reset_queries
@@ -209,3 +210,48 @@ def pedido_transaccional_create(request):
         'titulo': 'Registrar pedido transaccional',
         'form': form,
     })
+
+
+# Lab 7 - Ejercicio 6: Vista de reporte analítico con agregaciones y anotaciones
+def reporte_store_view(request):
+    # Lab 7 - Ejercicio 6: Métricas globales de prendas, ventas y satisfacción
+    metricas_prendas = Prenda.objects.filter(activo=True).aggregate(
+        total_prendas=Count('id'),
+        stock_total=Sum('stock'),
+        precio_promedio=Avg('precio'),
+    )
+    facturacion = DetallePedido.objects.aggregate(
+        facturacion_total=Sum(F('cantidad') * F('precio_unitario')),
+    )
+    satisfaccion = ResenaPrenda.objects.aggregate(
+        satisfaccion_promedio=Avg('calificacion'),
+    )
+
+    # Lab 7 - Ejercicio 6: Agrupación de pedidos por estado y facturación
+    pedidos_por_estado = Pedido.objects.values('estado').annotate(
+        cantidad=Count('id', distinct=True),
+        total=Sum(
+            F('detalles__cantidad') * F('detalles__precio_unitario'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+    ).order_by('-cantidad')
+
+    # Lab 7 - Ejercicio 6: Métricas por prenda mediante anotaciones ORM
+    prendas_metricas = Prenda.objects.filter(activo=True).annotate(
+        num_resenas=Count('resenas', distinct=True),
+        calificacion_prom=Avg('resenas__calificacion'),
+        num_pedidos=Count('detalles_pedido', distinct=True),
+    ).order_by('-num_resenas')[:10]
+
+    # Lab 7 - Ejercicio 6: Contexto del dashboard analítico
+    contexto = {
+        'titulo': 'Reporte Analítico de la Tienda',
+        'total_prendas': metricas_prendas['total_prendas'],
+        'stock_total': metricas_prendas['stock_total'],
+        'precio_promedio': metricas_prendas['precio_promedio'],
+        'facturacion_total': facturacion['facturacion_total'],
+        'satisfaccion_promedio': satisfaccion['satisfaccion_promedio'],
+        'pedidos_por_estado': pedidos_por_estado,
+        'prendas_metricas': prendas_metricas,
+    }
+    return render(request, 'store/reporte.html', contexto)
