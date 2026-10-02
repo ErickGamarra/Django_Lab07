@@ -1,5 +1,8 @@
 from django import forms
 
+#Lab 7 - Ejercicio 3: Formulario para registro de prendas, reseñas y pedidos
+from .models import Prenda
+
 TIPOS_CHOICES = [
     ('', '-- Seleccione Público / Tipo --'),
     ('Hombre', 'Moda Hombre'),
@@ -114,4 +117,38 @@ class ResenaPrendaForm(forms.Form):
         required=True,
         label="Tu Opinión sobre la Prenda",
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Cuéntanos qué tal te pareció la tela, corte o talla...'})
+    )
+
+
+# Lab 7 - Ejercicio 3: Formulario transaccional de registro de pedidos
+class RegistroPedidoForm(forms.Form):
+    cliente_nombre = forms.CharField(
+        max_length=100,
+        label="Nombre del cliente",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej. Ana Pérez',
+        }),
+    )
+    cliente_email = forms.EmailField(
+        label="Correo electrónico",
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'ana@example.com',
+        }),
+    )
+    prenda = forms.ModelChoiceField(
+        queryset=Prenda.objects.filter(activo=True),
+        label="Prenda",
+        empty_label="Seleccione una prenda activa",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    cantidad = forms.IntegerField(
+        min_value=1,
+        label="Cantidad",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'min': 1,
+            'step': 1,
+        }),
     )

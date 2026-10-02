@@ -1,0 +1,55 @@
+<!-- Lab 7 - Ejercicio 3: Plantilla para registro transaccional de pedidos -->
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - UrbanTrend{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8 col-xl-7">
+        <div class="mb-4">
+            <h1 class="h3 fw-bold text-dark mb-1">{{ titulo }}</h1>
+            <p class="text-muted mb-0">El pedido y el descuento de stock se guardan de forma atómica.</p>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom py-3">
+                <h2 class="h6 fw-bold mb-0"><i class="bi bi-bag-plus me-2 text-primary"></i>Datos del pedido</h2>
+            </div>
+            <div class="card-body p-4">
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger" role="alert">
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for field in form %}
+                        <div class="mb-3">
+                            <label for="{{ field.id_for_label }}" class="form-label fw-semibold">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+
+                    <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 border-top pt-3 mt-4">
+                        <a href="{% url 'store:prenda_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-1"></i>Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary fw-semibold">
+                            <i class="bi bi-check-circle me-1"></i>Registrar pedido
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

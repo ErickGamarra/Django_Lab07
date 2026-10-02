@@ -1,9 +1,13 @@
+import uuid
+
+from django.contrib import messages
+from django.db import transaction
+from django.db.models import F, Q
 from django.shortcuts import render, redirect
 from django.http import Http404
-from django.db.models import Q
 from django.db import connection, reset_queries
-from .models import Prenda, ResenaPrenda, Pedido
-from .forms import PrendaForm, ResenaPrendaForm
+from .models import DetallePedido, Pedido, Prenda, ResenaPrenda
+from .forms import PrendaForm, RegistroPedidoForm, ResenaPrendaForm
 
 
 def prenda_list(request):
@@ -145,4 +149,63 @@ def pedido_list(request):
         'pedidos': lista_pedidos,
         # La plantilla espera este nombre para mostrar el contador SQL.
         'total_consultas': total_consultas,
+    })
+
+
+# Lab 7 - Ejercicio 3: Vista transaccional con atomicidad y F()
+def pedido_transaccional_create(request):
+    if request.method == 'POST':
+        form = RegistroPedidoForm(request.POST)
+        if form.is_valid():
+            datos = form.cleaned_data
+            cantidad = datos['cantidad']
+
+            try:
+                # Lab 7 - Ejercicio 3: Inicio de transacción atómica
+                with transaction.atomic():
+                    prenda = Prenda.objects.select_for_update().get(
+                        pk=datos['prenda'].pk,
+                        activo=True,
+                    )
+                    if prenda.stock < cantidad:
+                        raise ValueError(
+                            f"Stock insuficiente: hay {prenda.stock} unidades de "
+                            f"{prenda.nombre} y se solicitaron {cantidad}."
+                        )
+
+                    # Lab 7 - Ejercicio 3: Descuento atómico de stock con expresión F()
+                    Prenda.objects.filter(pk=prenda.pk).update(
+                        stock=F('stock') - cantidad
+                    )
+
+                    codigo = f"PED-{uuid.uuid4().hex[:6].upper()}"
+                    while Pedido.objects.filter(codigo=codigo).exists():
+                        codigo = f"PED-{uuid.uuid4().hex[:6].upper()}"
+
+                    pedido = Pedido.objects.create(
+                        codigo=codigo,
+                        cliente_nombre=datos['cliente_nombre'],
+                        cliente_email=datos['cliente_email'],
+                        estado='Pagado',
+                    )
+                    DetallePedido.objects.create(
+                        pedido=pedido,
+                        prenda=prenda,
+                        cantidad=cantidad,
+                        precio_unitario=prenda.precio,
+                    )
+            except Exception as e:
+                messages.error(request, f"No se pudo registrar el pedido: {e}")
+            else:
+                messages.success(
+                    request,
+                    f"Pedido {pedido.codigo} registrado y pagado correctamente.",
+                )
+                return redirect('store:prenda_list')
+    else:
+        form = RegistroPedidoForm()
+
+    return render(request, 'store/pedido_transaccional_form.html', {
+        'titulo': 'Registrar pedido transaccional',
+        'form': form,
     })
