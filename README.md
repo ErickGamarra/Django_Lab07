@@ -101,7 +101,7 @@ Se realizó una prueba de inyección de código mediante el ingreso de:
 <script>alert("XSS")</script>
 ```
 * **Comportamiento en la interfaz:** El navegador lo presenta como texto plano literal `<SCRIPT>ALERT("XSS")</SCRIPT>` sin ejecutar el script.
-* **Comprobación en el código fuente (`Ctrl + U`):**
+* **Comprobación en el código feoeuente (`Ctrl + U`):**
   ```html
   <span class="fw-bold text-dark d-block mb-0">&lt;SCRIPT&gt;ALERT(&quot;XSS&quot;)&lt;/SCRIPT&gt;</span>
   ```

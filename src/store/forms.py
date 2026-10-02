@@ -114,4 +114,4 @@ class ResenaPrendaForm(forms.Form):
         required=True,
         label="Tu Opinión sobre la Prenda",
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Cuéntanos qué tal te pareció la tela, corte o talla...'})
-    )
+    )
