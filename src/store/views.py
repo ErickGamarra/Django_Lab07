@@ -16,7 +16,8 @@ def prenda_list(request):
     tipo = request.GET.get('tipo', '').strip()
     categoria = request.GET.get('categoria', '').strip()
 
-    prendas = Prenda.objects.filter(activo=True)
+    # Lab 7 - Ejercicio 7: Usar el QuerySet activas() para filtrar el catálogo
+    prendas = Prenda.objects.activas()
 
     if query:
         prendas = prendas.filter(
@@ -31,9 +32,10 @@ def prenda_list(request):
     if categoria:
         prendas = prendas.filter(categoria=categoria)
 
-    total_catalogo = Prenda.objects.filter(activo=True).count()
-    total_stock_global = sum(p.stock for p in Prenda.objects.filter(activo=True))
-    total_activas = Prenda.objects.filter(activo=True, disponible=True).count()
+    # Lab 7 - Ejercicio 7: Reutilizar activas() y encadenar disponibles() para las métricas
+    total_catalogo = Prenda.objects.activas().count()
+    total_stock_global = sum(p.stock for p in Prenda.objects.activas())
+    total_activas = Prenda.objects.activas().disponibles().count()
 
     contexto = {
         'titulo': 'Catálogo de Ropa Streetwear',
@@ -119,7 +121,8 @@ def prenda_detail_list(request):
     """
     reset_queries()
 
-    prendas = Prenda.objects.filter(activo=True).select_related('detalle')
+    # Lab 7 - Ejercicio 7: Componer activas() con select_related() para el catálogo técnico
+    prendas = Prenda.objects.activas().select_related('detalle')
 
     lista_prendas = list(prendas)
     total_consultas = len(connection.queries)
@@ -214,8 +217,8 @@ def pedido_transaccional_create(request):
 
 # Lab 7 - Ejercicio 6: Vista de reporte analítico con agregaciones y anotaciones
 def reporte_store_view(request):
-    # Lab 7 - Ejercicio 6: Métricas globales de prendas, ventas y satisfacción
-    metricas_prendas = Prenda.objects.filter(activo=True).aggregate(
+    # Lab 7 - Ejercicio 7: Aplicar activas() antes de agregar métricas globales de prendas
+    metricas_prendas = Prenda.objects.activas().aggregate(
         total_prendas=Count('id'),
         stock_total=Sum('stock'),
         precio_promedio=Avg('precio'),
@@ -236,8 +239,8 @@ def reporte_store_view(request):
         ),
     ).order_by('-cantidad')
 
-    # Lab 7 - Ejercicio 6: Métricas por prenda mediante anotaciones ORM
-    prendas_metricas = Prenda.objects.filter(activo=True).annotate(
+    # Lab 7 - Ejercicio 7: Aplicar activas() antes de anotar métricas por prenda
+    prendas_metricas = Prenda.objects.activas().annotate(
         num_resenas=Count('resenas', distinct=True),
         calificacion_prom=Avg('resenas__calificacion'),
         num_pedidos=Count('detalles_pedido', distinct=True),

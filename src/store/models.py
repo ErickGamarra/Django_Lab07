@@ -172,7 +172,21 @@ TALLAS_CHOICES = [
 ]
 
 
+# Lab 7 - Ejercicio 7: QuerySet encadenable para filtrar prendas activas y disponibles
+class PrendaQuerySet(models.QuerySet):
+    # Lab 7 - Ejercicio 7: Filtro reutilizable de prendas activas
+    def activas(self):
+        return self.filter(activo=True)
+
+    # Lab 7 - Ejercicio 7: Filtro encadenable de prendas disponibles con stock
+    def disponibles(self):
+        return self.filter(disponible=True, stock__gt=0)
+
+
 class Prenda(models.Model):
+    # Lab 7 - Ejercicio 7: QuerySet personalizado asignado como manager
+    objects = PrendaQuerySet.as_manager()
+
     nombre = models.CharField(max_length=120)
     marca = models.CharField(max_length=80)
     tipo = models.CharField(max_length=20, choices=TIPOS_CHOICES)
