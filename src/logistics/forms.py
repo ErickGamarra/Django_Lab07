@@ -174,3 +174,42 @@ class DetalleDespachoForm(forms.ModelForm):
             return lote.strip().upper()
         return lote
 
+
+# Lab 7 - Parte 2 (Criterios 1 y 2): Formulario para registrar despachos transaccionales
+class RegistroDespachoForm(forms.Form):
+    sucursal = forms.ModelChoiceField(
+        queryset=Sucursal.objects.all(),
+        required=True,
+        label="Sucursal de destino",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    transportista = forms.ModelChoiceField(
+        queryset=Transportista.objects.filter(activo=True),
+        required=False,
+        label="Transportista",
+        empty_label="Sin asignar",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    material = forms.ModelChoiceField(
+        queryset=Material.objects.all(),
+        required=True,
+        label="Material",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    cantidad = forms.IntegerField(
+        min_value=1,
+        required=True,
+        label="Cantidad a despachar",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': 1, 'step': 1}),
+    )
+    observaciones = forms.CharField(
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        required=False,
+        label="Observaciones",
+    )
+    simular_error = forms.BooleanField(
+        required=False,
+        label="Simular error para probar Rollback",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+

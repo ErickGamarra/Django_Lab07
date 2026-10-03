@@ -1,5 +1,9 @@
+import uuid
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
+from django.db import transaction
+from django.db.models import Avg, Count, DecimalField, F, Sum
 from django.db.models import ProtectedError
 from .models import (
     Proveedor,
@@ -20,6 +24,7 @@ from .forms import (
     FichaTecnicaMaterialForm,
     OrdenDespachoForm,
     DetalleDespachoForm,
+    RegistroDespachoForm,
 )
 
 
@@ -42,13 +47,55 @@ def index_logistics(request):
     return render(request, 'logistics/index.html', contexto)
 
 
+# Lab 7 - Parte 2 (Criterio 5): Vista del panel analítico de logística
+def reporte_logistics_view(request):
+    # Lab 7 - Parte 2 (Criterio 5): Agregar unidades, valorización y promedio por línea
+    metricas_globales = DetalleDespacho.objects.aggregate(
+        total_unidades=Sum('cantidad_despachada'),
+        costo_total=Sum(
+            F('cantidad_despachada') * F('costo_unitario_historico'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+        promedio_por_linea=Avg(
+            F('cantidad_despachada') * F('costo_unitario_historico'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+    )
+
+    # Lab 7 - Parte 2 (Criterio 5): Anotar la demanda acumulada y cantidad de despachos por material
+    # Lab 7 - Parte 2 (Criterio 7): Usar con_stock() para el reporte de demanda de materiales disponibles
+    consumo_por_material = Material.objects.con_stock().annotate(
+        total_despachado=Sum('detalles_despacho__cantidad_despachada'),
+        total_pedidos=Count('detalles_despacho', distinct=True),
+    ).select_related('categoria').order_by('-total_despachado')
+
+    # Lab 7 - Parte 2 (Criterio 5): Agrupar órdenes por estado y calcular unidades y valor despachado
+    despachos_por_estado = OrdenDespacho.objects.values('estado').annotate(
+        total_ordenes=Count('id', distinct=True),
+        total_unidades=Sum('detalles__cantidad_despachada'),
+        valor_total=Sum(
+            F('detalles__cantidad_despachada') * F('detalles__costo_unitario_historico'),
+            output_field=DecimalField(max_digits=12, decimal_places=2),
+        ),
+    ).order_by('-total_ordenes')
+
+    # Lab 7 - Parte 2 (Criterio 5): Entregar métricas y reportes analíticos a la plantilla
+    contexto = {
+        'titulo': 'Panel Analítico de Logística',
+        **metricas_globales,
+        'consumo_por_material': consumo_por_material,
+        'despachos_por_estado': despachos_por_estado,
+    }
+    return render(request, 'logistics/reporte.html', contexto)
+
+
 # ============================================================
 # CRUD: MATERIALES (OPTIMIZADO CON 1:N Y 1:1 VÍA select_related)
 # ============================================================
 
 def material_list(request):
-    # OPTIMIZACIÓN ORM: Trae Material + Categoria (1:N) + FichaTecnica (1:1) en 1 sola consulta SQL JOIN
-    materiales = Material.objects.select_related('categoria', 'ficha_tecnica').all()
+    # Lab 7 - Parte 2 (Criterio 7): Usar con_stock() para mostrar materiales disponibles en el catálogo
+    materiales = Material.objects.con_stock().select_related('categoria', 'ficha_tecnica')
     return render(request, 'logistics/material_list.html', {'materiales': materiales})
 
 
@@ -163,6 +210,72 @@ def orden_despacho_create(request):
     return render(request, 'logistics/orden_despacho_form.html', {
         'form': form,
         'titulo': 'Nueva Orden de Despacho Logístico'
+    })
+
+
+# Lab 7 - Parte 2 (Criterios 1 y 2): Crear despacho y descontar inventario en una transacción
+def despacho_transaccional_view(request):
+    form = RegistroDespachoForm(request.POST if request.method == 'POST' else None)
+    # Lab 7 - Parte 2 (Criterio 7): Limitar el selector transaccional a materiales con stock positivo
+    form.fields['material'].queryset = Material.objects.con_stock()
+
+    if request.method == 'POST':
+        if form.is_valid():
+            datos = form.cleaned_data
+            cantidad = datos['cantidad']
+
+            try:
+                # Lab 7 - Parte 2 (Criterios 1 y 2): Abrir atomicidad y bloquear la fila del material
+                with transaction.atomic():
+                    material = Material.objects.select_for_update().get(
+                        pk=datos['material'].pk,
+                    )
+                    if material.stock < cantidad:
+                        raise ValueError("Stock insuficiente")
+
+                    # Lab 7 - Parte 2 (Criterios 1 y 2): Descontar stock con expresión F de forma atómica
+                    stock_actualizado = Material.objects.filter(
+                        pk=material.pk,
+                        stock__gte=cantidad,
+                    ).update(stock=F('stock') - cantidad)
+                    if not stock_actualizado:
+                        raise ValueError("Stock insuficiente")
+
+                    # Lab 7 - Parte 2 (Criterios 1 y 2): Crear cabecera y detalle histórico del despacho
+                    codigo = f"DSP-{uuid.uuid4().hex[:8].upper()}"
+                    while OrdenDespacho.objects.filter(codigo=codigo).exists():
+                        codigo = f"DSP-{uuid.uuid4().hex[:8].upper()}"
+
+                    despacho = OrdenDespacho.objects.create(
+                        codigo=codigo,
+                        sucursal_destino=datos['sucursal'],
+                        transportista=datos['transportista'],
+                        estado='En Tránsito',
+                        observaciones=datos['observaciones'],
+                    )
+                    DetalleDespacho.objects.create(
+                        despacho=despacho,
+                        material=material,
+                        cantidad_despachada=cantidad,
+                        costo_unitario_historico=material.precio_unitario,
+                    )
+
+                    # Lab 7 - Parte 2 (Criterios 1 y 2): Forzar fallo después de las escrituras para comprobar rollback
+                    if datos['simular_error']:
+                        raise Exception("Error forzado para comprobación de Rollback")
+            except Exception as e:
+                messages.error(request, str(e))
+            else:
+                messages.success(request, f"Despacho {despacho.codigo} creado correctamente.")
+                return redirect('logistics:orden_despacho_list')
+    # Lab 7 - Parte 2 (Criterios 1 y 2): Consultar órdenes recientes para comprobar el resultado
+    despachos_recientes = OrdenDespacho.objects.select_related(
+        'sucursal_destino', 'transportista'
+    ).order_by('-fecha_emision')[:5]
+    return render(request, 'logistics/despacho_form.html', {
+        'form': form,
+        'titulo': 'Registrar Despacho Transaccional',
+        'despachos_recientes': despachos_recientes,
     })
 
 

@@ -64,7 +64,21 @@ class CategoriaInsumo(models.Model):
         return self.nombre
 
 
+# Lab 7 - Parte 2 (Criterio 6): QuerySet personalizado para Material
+class MaterialQuerySet(models.QuerySet):
+    # Lab 7 - Parte 2 (Criterio 6): Filtrar materiales con stock positivo
+    def con_stock(self):
+        return self.filter(stock__gt=0)
+
+    # Lab 7 - Parte 2 (Criterio 6): Filtrar materiales por debajo del umbral indicado
+    def stock_bajo(self, umbral=100):
+        return self.filter(stock__lte=umbral)
+
+
 class Material(models.Model):
+    # Lab 7 - Parte 2 (Criterio 6): Asignar el QuerySet personalizado como manager
+    objects = MaterialQuerySet.as_manager()
+
     categoria = models.ForeignKey(
         CategoriaInsumo,
         on_delete=models.PROTECT,

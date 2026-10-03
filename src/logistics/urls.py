@@ -7,6 +7,9 @@ urlpatterns = [
     # Dashboard principal de logistica
     path('', views.index_logistics, name='index'),
 
+    # Lab 7 - Parte 2 (Criterio 5): Ruta del panel analítico de logística
+    path('reporte/', views.reporte_logistics_view, name='reporte_logistics'),
+
     # CRUD: Materiales (1:N y 1:1)
     path('materiales/', views.material_list, name='material_list'),
     path('materiales/nuevo/', views.material_create, name='material_create'),
@@ -20,6 +23,8 @@ urlpatterns = [
     # Cabecera N:M — Órdenes de Despacho
     path('despachos/', views.orden_despacho_list, name='orden_despacho_list'),
     path('despachos/nuevo/', views.orden_despacho_create, name='orden_despacho_create'),
+    # Lab 7 - Parte 2 (Criterios 1 y 2): Ruta del formulario de despacho transaccional
+    path('despacho/transaccional/', views.despacho_transaccional_view, name='despacho_transaccional'),
     path('despachos/<int:pk>/', views.orden_despacho_detail, name='orden_despacho_detail'),
     path('despachos/editar/<int:pk>/', views.orden_despacho_update, name='orden_despacho_update'),
     path('despachos/eliminar/<int:pk>/', views.orden_despacho_delete, name='orden_despacho_delete'),
