@@ -1,153 +1,205 @@
-# Laboratorio 06 — Herencia, Filtros y Reutilización de Templates con Django Template Language (DTL)
+Laboratorio 07 — ORM Avanzado: Transacciones Atómicas, Agregaciones Analíticas, QuerySets Personalizados y Rendimiento SQL
 
-**Curso:** Desarrollo de Aplicaciones Empresariales  
-**Institución:** Tecsup  
-**Sección:** 4 - C24 - Sección CD  
-**Docente:** Yunior Bestard Aroche  
-**Integrantes del Equipo:**
-1. **Jesús Enrique Rocha Bobadilla**
-2. **Erick Arturo Gamarra Mundaca**  
-**Proyecto:** **UrbanTrend** — Plataforma Textil Streetwear y Sistema Logístico Avanzado con Django ORM y SQLite  
-**Repositorio GitHub:** [https://github.com/Jesus-Rocha-B/Django_Lab06.git](https://github.com/Jesus-Rocha-B/Django_Lab06.git)
+Curso: Desarrollo de Aplicaciones Empresariales
 
----
+Institución: Tecsup
 
-## 🎯 1. Objetivo del Laboratorio 06
+Sección: 4 - C24 - Sección CD
 
-Refactorizar y optimizar la capa de presentación visual de las aplicaciones **`store`** (catálogo streetwear) y **`logistics`** (gestión de abastecimiento e insumos) mediante las mejores prácticas del **Django Template Language (DTL)**:
-* **Herencia de plantillas (`{% extends %}` y `{% block %}`):** Centralizar la estructura HTML5, estilos responsivos con Bootstrap 5.3 y elementos comunes en una plantilla maestra ([`base.html`](file:///d:/Django/Lab06/Django_Lab06/src/core/templates/base.html)), eliminando duplicidad.
-* **Transformación y formato con filtros de Django:** Aplicar filtros estándar como `|upper`, `|floatformat:2`, `|date` y `|pluralize` para estandarizar la presentación de datos numéricos y cadenas.
-* **Modularidad y principio DRY con `{% include %}`:** Extraer componentes visuales repetitivos a fragmentos reutilizables en subcarpetas `includes/`.
-* **Documentación técnica de servidor (`{# ... #}`):** Documentar la lógica condicional compleja de las plantillas sin exponer notas internas en el DOM del cliente.
-* **Seguridad y mitigación de XSS:** Validar el sistema de auto-escape nativo de Django ante entradas con caracteres maliciosos (`<script>`).
+Docente: Yunior Bestard Aroche
 
----
+Integrantes del Equipo:
 
-## 🏗️ 2. Arquitectura de Plantillas y Herencia
+    Jesús Enrique Rocha Bobadilla
 
-Todas las pantallas de la solución heredan de [`core/templates/base.html`](file:///d:/Django/Lab06/Django_Lab06/src/core/templates/base.html), la cual establece:
-1. Cabecera HTML5, metadatos y fuentes tipográficas Google Fonts (*Inter*).
-2. Estilos globales con CDN de **Bootstrap 5.3.3** e iconos **Bootstrap Icons 1.11.3**.
-3. Barra de navegación principal (*Navbar*) con enlaces directos al catálogo y al menú desplegable logístico.
-4. Contenedor principal con soporte de mensajes flash (`django.contrib.messages`) y bloque extensible `{% block content %}`.
-5. Pie de página unificado y carga de scripts al cierre del `<body>`.
+    Erick Arturo Gamarra Mundaca
 
-```text
+    Proyecto: UrbanTrend — Plataforma Textil Streetwear y Sistema Logístico Avanzado con Django ORM y SQLite
+
+    Repositorio GitHub: https://github.com/Jesus-Rocha-B/Django_Lab06.git
+
+🎯 1. Objetivo del Laboratorio 07
+
+Implementar patrones avanzados de persistencia, concurrencia, analítica delegada y optimización de rendimiento sobre el motor relacional de Django ORM en los dominios store (catálogo y checkout comercial) y logistics (cadena de suministro y abastecimiento de insumos textiles):
+
+    Integridad Transaccional (ACID): Encapsular operaciones de múltiples escrituras en bloques indivisibles con transaction.atomic(), garantizando la reversión total (rollback) ante excepciones.
+
+    Prevención de Condiciones de Carrera (Race Conditions): Delegar el descuento de existencias al motor de base de datos con expresiones F(), respaldado por bloqueo pesimista de filas (select_for_update()).
+
+    Analítica de Alto Rendimiento en BD: Reemplazar el procesamiento algorítmico en memoria Python por funciones agregadas delegadas a SQL (aggregate(), annotate(), values().annotate()).
+
+    Lógica de Dominio Centralizada (DRY): Desarrollar QuerySets personalizados con métodos semánticos encadenables asignados como managers mediante .as_manager().
+
+    Eliminación del Problema de Consultas N+1: Auditar la saturación de I/O mediante connection.queries y aplicar carga anticipada (eager loading) con select_related() y prefetch_related().
+
+🏗️ 2. Arquitectura de Módulos y Dominio Relacional
+
+El sistema opera sobre una base de datos SQLite estructurada en dos dominios complementarios:
+Plaintext
+
 src/
 ├── core/templates/
-│   └── base.html                          ◄── PLANTILLA PADRE (Layout Maestro)
-├── store/templates/store/
-│   ├── prenda_list.html                   ◄── HEREDA de base.html (Catálogo)
-│   ├── prenda_detail.html                 ◄── HEREDA de base.html (Detalle Prenda)
-│   ├── prenda_form.html                   ◄── HEREDA de base.html (Formulario Prenda)
-│   └── includes/
-│       └── badge_disponibilidad.html      ◄── COMPONENTE REUTILIZABLE (Include)
-└── logistics/templates/logistics/
-    ├── material_list.html                 ◄── HEREDA de base.html (Listado Insumos)
-    ├── orden_despacho_list.html           ◄── HEREDA de base.html (Listado Despachos)
-    ├── orden_despacho_detail.html         ◄── HEREDA de base.html (Detalle N:M)
-    ├── detalle_despacho_list.html         ◄── HEREDA de base.html (CRUD Intermedio)
-    └── includes/
-        ├── badge_estado_despacho.html     ◄── COMPONENTE REUTILIZABLE (Include)
-        └── detalle_despacho_row.html      ◄── COMPONENTE REUTILIZABLE N:M (Include)
-```
+│   └── base.html                          ◄── Layout maestro con Bootstrap 5.3
+├── store/                                 ◄── DOMINIO COMERCIAL STREETWEAR
+│   ├── models.py                          ◄── Prenda (PrendaQuerySet), Order, OrderItem
+│   ├── views.py                           ◄── Checkout transaccional y reporte comercial
+│   ├── urls.py                            ◄── Rutas de catálogo, compra y reportes
+│   └── templates/store/
+│       ├── checkout_transaccional.html    ◄── Formulario de compra con rollback
+│       └── reporte_ventas.html            ◄── Panel analítico de facturación
+└── logistics/                             ◄── DOMINIO LOGÍSTICO Y SUMINISTRO TEXTIL
+    ├── models.py                          ◄── Material (MaterialQuerySet), OrdenDespacho, DetalleDespacho
+    ├── forms.py                           ◄── RegistroDespachoForm (con simular_error)
+    ├── views.py                           ◄── despacho_transaccional_view, reporte_logistics_view
+    ├── urls.py                            ◄── Rutas /despacho/transaccional/, /reporte/, /materiales/
+    └── templates/logistics/
+        ├── despacho_form.html             ◄── Formulario con panel de auditoría en vivo
+        ├── reporte.html                   ◄── Dashboard gerencial con tarjetas KPI y tablas
+        └── material_list.html             ◄── Catálogo optimizado con select_related
 
----
+Entidades y Relaciones Clave del Dominio Logístico
 
-## 🧩 3. Componentes Reutilizables Extraídos con `{% include %}`
+    Entidades Maestras: Proveedor, Sucursal y Transportista.
 
-Se crearon e implementaron componentes modulares para cumplir el principio **DRY (Don't Repeat Yourself)**:
+    Jerarquía 1:N con Cascada: CategoriaInsumo ➔ Material (stock, precio_unitario).
 
-| Componente | Archivo Creado | Templates donde se reutiliza | Qué resuelve |
-| :--- | :--- | :--- | :--- |
-| **Badge de Disponibilidad** | `store/includes/badge_disponibilidad.html` | [`prenda_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/store/templates/store/prenda_list.html), [`prenda_detail.html`](file:///d:/Django/Lab06/Django_Lab06/src/store/templates/store/prenda_detail.html) | Estandariza la insignia comercial que indica si una prenda está disponible o agotada según su stock. |
-| **Insignia Estado de Despacho** | `logistics/includes/badge_estado_despacho.html` | [`orden_despacho_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/orden_despacho_list.html), [`orden_despacho_detail.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/orden_despacho_detail.html) | Conmuta colores contextuales de Bootstrap según el estado de la guía (`Borrador`, `En Tránsito`, `Entregado`, `Cancelado`). |
-| **Fila Modelo Intermedio N:M** | `logistics/includes/detalle_despacho_row.html` | [`orden_despacho_detail.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/orden_despacho_detail.html), [`detalle_despacho_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/detalle_despacho_list.html) | Renderiza de manera homogénea las instancias intermedias de `DetalleDespacho` con sus atributos propios (lote, cantidad, costo unitario histórico, subtotal y botones de acción CRUD). |
+    Relación 1:1 Técnica: Material ➔ FichaTecnicaMaterial (especificaciones de composición y encogimiento).
 
----
+    Relación N:M con Modelo Intermedio: OrdenDespacho vinculada a Material mediante DetalleDespacho, preservando atributos históricos: cantidad_despachada, costo_unitario_historico y lote_produccion.
 
-## 🎨 4. Aplicación de Filtros de Django (DTL)
+⚡ 3. Control de Concurrencia y Transacciones Atómicas (ACID)
 
-Se incorporaron filtros sobre campos ya existentes para enriquecer la presentación visual sin alterar la base de datos:
+Se implementó el flujo transaccional de despacho de insumos en src/logistics/views.py (despacho_transaccional_view) integrando cuatro niveles de protección:
+Python
 
-1. **`|upper` (Mayúsculas sostenidas):**
-   * `{{ prenda.nombre|upper }}` en [`prenda_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/store/templates/store/prenda_list.html).
-   * `{{ m.nombre|upper }}` en [`material_list.html`](file:///d:/Django/Lab06/Django_Lab06/src/logistics/templates/logistics/material_list.html).
-2. **`|floatformat:2` (Formateo monetario):**
-   * `S/ {{ prenda.precio|floatformat:2 }}` en el catálogo de prendas.
-   * `S/ {{ m.precio_unitario|floatformat:2 }}` en el costo unitario de insumos textiles.
-   * `S/ {{ d.subtotal|floatformat:2 }}` en los ítems despachados.
-3. **`|date` (Formateo de fechas):**
-   * `{{ d.fecha_emision|date:"d/m/Y H:i" }}` en las guías de remisión y órdenes logísticas.
-4. **`|pluralize` y `|length` (Concordancia gramatical):**
-   * `{{ total_resultados }} prenda{{ total_resultados|pluralize:"s" }}` adaptando automáticamente singular o plural.
+with transaction.atomic():
+    # 1. Bloqueo pesimista a nivel de fila (SELECT ... FOR UPDATE)
+    material = Material.objects.select_for_update().get(pk=datos['material'].pk)
+    
+    if material.stock < cantidad:
+        raise ValueError("Stock insuficiente.")
 
----
+    # 2. Descuento atómico directo en SQL evitando condiciones de carrera
+    stock_actualizado = Material.objects.filter(
+        pk=material.pk,
+        stock__gte=cantidad
+    ).update(stock=F('stock') - cantidad)
 
-## 📝 5. Documentación con Comentarios de Servidor `{# #}`
+    # 3. Escrituras multi-modelo dependientes
+    despacho = OrdenDespacho.objects.create(...)
+    DetalleDespacho.objects.create(
+        despacho=despacho,
+        material=material,
+        cantidad_despachada=cantidad,
+        costo_unitario_historico=material.precio_unitario
+    )
 
-Se añadieron comentarios con sintaxis `{# ... #}` en secciones clave de las plantillas:
-* Explicación de la asignación condicional de distintivos por segmento de público (`Hombre`, `Mujer`, `Niños`, `Unisex`).
-* Documentación de la comprobación de inventario crítico para alternar entre el badge de *Agotado* y las unidades físicas.
-* Documentación del recorrido de relaciones ORM **1:N** (Material ➔ Categoría) y **1:1** (Material ➔ Ficha Técnica).
-* **Diferencia clave con comentarios HTML:** A diferencia de `<!-- -->`, los comentarios con `{# #}` son eliminados por Django en el servidor y **nunca llegan al código fuente del navegador**.
+    # 4. Interrupción inducida para auditar integridad
+    if datos['simular_error']:
+        raise Exception("Error forzado para comprobación de Rollback")
 
----
+Escenario Evaluado	Acción Ejecutada	Resultado en Base de Datos
+Transacción Exitosa (simular_error=False)	Despacho de 10 unidades de material.	COMMIT total: Se inserta OrdenDespacho, se crea DetalleDespacho y se descuenta el stock en Material.
+Transacción Fallida (simular_error=True)	Excepción lanzada tras las escrituras.	ROLLBACK total: SQLite descarta todas las inserciones y el stock físico permanece intacto sin registros huérfanos.
+📊 4. Panel Analítico y Consultas Agregadas en BD
 
-## 🛡️ 6. Verificación de Seguridad y Auto-Escape XSS
+Se sustituyó la agregación manual en memoria por consultas delegadas al motor relacional en reporte_logistics_view:
+Operación ORM	Consulta SQL Equivalente	Propósito en el Dominio Logístico
+DetalleDespacho.objects.aggregate()	SELECT SUM(cantidad), SUM(cantidad * costo), AVG(cantidad) FROM detalle_despacho	Calcula los KPIs globales del panel: total de insumos despachados, valorización monetaria histórica acumulada y promedio por despacho.
+Material.objects.annotate()	SELECT material.*, SUM(detalle.cantidad) FROM material LEFT JOIN detalle GROUP BY material.id	Proyecta fila por fila la demanda acumulada y el número de despachos de cada insumo textil en el catálogo.
+OrdenDespacho.objects.values().annotate()	SELECT estado, COUNT(id), SUM(detalle.subtotal) FROM orden GROUP BY estado	Agrupación gerencial que totaliza órdenes y montos monetarios consolidados según su estado logístico (En Tránsito, Entregado).
 
-Se realizó una prueba de inyección de código mediante el ingreso de:
-```html
-<script>alert("XSS")</script>
-```
-* **Comportamiento en la interfaz:** El navegador lo presenta como texto plano literal `<SCRIPT>ALERT("XSS")</SCRIPT>` sin ejecutar el script.
-* **Comprobación en el código feoeuente (`Ctrl + U`):**
-  ```html
-  <span class="fw-bold text-dark d-block mb-0">&lt;SCRIPT&gt;ALERT(&quot;XSS&quot;)&lt;/SCRIPT&gt;</span>
-  ```
-* **Conclusión:** Django escapa por defecto los caracteres peligrosos (`<` a `&lt;`, `>` a `&gt;`, `"` a `&quot;`), neutralizando los ataques de **Cross-Site Scripting**.
+La plantilla logistics/reporte.html consume estos datos en tiempo real presentando 3 tarjetas métricas superiores y 2 tablas responsivas con Bootstrap 5.
+🧩 5. QuerySets Semánticos Personalizados (.as_manager())
 
----
+Se centralizaron las reglas de negocio de inventario implementando managers personalizados bajo el principio DRY:
+Definición en src/logistics/models.py
+Python
 
-## ⚖️ 7. Comparativa: Templates Refactorizados vs. Django Admin
+class MaterialQuerySet(models.QuerySet):
+    def con_stock(self):
+        """Filtra insumos con existencias físicas disponibles."""
+        return self.filter(stock__gt=0)
 
-| Criterio | Django Admin (Semana 5) | Aplicación Refactorizada (Semana 6) |
-| :--- | :--- | :--- |
-| **Audiencia** | Uso interno exclusivo para administradores técnicos (`is_staff`). | Interfaz pública y amigable orientada a clientes y operarios de almacén. |
-| **Diseño y UX** | Monocromático, rígido y tabular. | Moderno con **Bootstrap 5**, micro-interacciones, diseño responsivo y KPIs en tiempo real. |
-| **Relaciones Complejas** | Formularios planos o inlines tabulares difíciles de auditar. | Fichas consolidadas con tarjetas de resumen financiero, atributos del modelo intermedio N:M anidados y navegación visual. |
-| **Mantenibilidad (DRY)** | Sobreescritura compleja de plantillas internas de Django. | **Modularidad pura**: modificación centralizada de componentes reutilizables mediante `{% include %}`. |
-| **Seguridad** | Expone la estructura de tablas y metadatos del sistema. | **Principio de menor privilegio**: URLs públicas desacopladas (`/ropa/`, `/logistics/`) sin acceso al panel administrativo. |
+    def stock_bajo(self, umbral=100):
+        """Filtra insumos en nivel crítico de reposición."""
+        return self.filter(stock__lte=umbral)
 
----
+class Material(models.Model):
+    objects = MaterialQuerySet.as_manager()
+    # ... atributos del modelo
 
-## 🚀 8. Puesta en Marcha Local
+Ventajas de Implementación
 
-```powershell
+    Encadenamiento directo: Permite consultas compuestas como Material.objects.con_stock().stock_bajo(200) generando una sola cláusula WHERE (stock > 0 AND stock <= 200).
+
+    Reutilización en vistas: Utilizado en material_list para filtrar el catálogo público y en RegistroDespachoForm para impedir la selección de insumos sin existencias.
+
+    Integridad del CRUD: Las operaciones estándar (create(), update(), delete()) en vistas y Django Admin continúan funcionando de forma transparente.
+
+🚀 6. Auditoría Empírica y Reducción del Problema N+1
+
+Se auditó en el shell de Django el impacto de consultar el catálogo de 9 materiales accediendo a su categoría (1:N) y a su ficha técnica textil (1:1):
+Python
+
+from django.db import connection, reset_queries
+from logistics.models import Material
+
+# Escenario Sin Optimizar (Lazy Loading)
+reset_queries()
+for m in list(Material.objects.all()):
+    _ = m.categoria.nombre          # 1 consulta por cada FK
+    _ = m.ficha_tecnica.composicion  # 1 consulta por cada OneToOne
+consultas_sin_opt = len(connection.queries)
+
+# Escenario Optimizado (Eager Loading)
+reset_queries()
+for m in list(Material.objects.select_related('categoria', 'ficha_tecnica').all()):
+    _ = m.categoria.nombre
+    _ = m.ficha_tecnica.composicion
+consultas_con_opt = len(connection.queries)
+
+Resultados de la Medición Empírica
+Estrategia de Consulta	Sentencia ORM	Consultas SQL Ejecutadas	Comportamiento en Base de Datos
+Sin Optimizar	Material.objects.all()	19 consultas (1+2N)	1 consulta inicial para materiales + 9 para categorías + 9 para fichas técnicas individuales.
+Optimizado	Material.objects.select_related(...)	1 consulta	Un único LEFT OUTER JOIN / INNER JOIN que recupera todas las columnas relacionales de forma anticipada.
+⚖️ 7. Comparativa Arquitectónica: ORM Básico vs. ORM Avanzado
+Criterio Técnico	Implementación Convencional	Arquitectura Implementada (Lab 07)
+Manejo de Stock	item.stock -= cant; item.save() propenso a sobreescrituras por concurrencia.	Expresión atómica F('stock') - cant ejecutada directamente en SQL.
+Múltiples Escrituras	Sentencias aisladas sin control de fallos intermedios.	Bloque transaction.atomic() con reversión automática (ROLLBACK).
+Lecturas Concurrentes	Lecturas sucias sin restricción de fila.	Bloqueo pesimista con select_for_update() a nivel de base de datos.
+Métricas y Totales	Bucles for y sum() procesados en memoria RAM de Python.	Agregaciones directas en el RDBMS con aggregate() y annotate().
+Filtros de Negocio	Métodos .filter() repetidos dispersos en controladores.	QuerySet personalizado con métodos semánticos encadenables vía .as_manager().
+Carga de Relaciones	Lectura diferida (lazy loading) con latencia de red elevada (N+1).	Carga anticipada (eager loading) mediante select_related() y prefetch_related().
+💻 8. Puesta en Marcha Local y Endpoints Clave
+PowerShell
+
 # 1. Clonar el repositorio
 git clone https://github.com/Jesus-Rocha-B/Django_Lab06.git
 cd Django_Lab06
 
-# 2. Crear y activar entorno virtual
+# 2. Crear y activar el entorno virtual
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
 # 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 4. Aplicar migraciones SQLite y sembrar datos de prueba
+# 4. Aplicar migraciones y verificar integridad
 cd src
 python manage.py migrate
-python seed_prendas.py
-python seed_logistics.py
 
 # 5. Iniciar servidor de desarrollo
 python manage.py runserver
-```
 
-* **Catálogo de Prendas (App Store):** [http://127.0.0.1:8000/ropa/](http://127.0.0.1:8000/ropa/)
-* **Módulo de Logística (App Logistics):** [http://127.0.0.1:8000/logistics/](http://127.0.0.1:8000/logistics/)
-* **Listado de Insumos Textiles:** [http://127.0.0.1:8000/logistics/materiales/](http://127.0.0.1:8000/logistics/materiales/)
-* **Detalle de Orden de Despacho (N:M):** [http://127.0.0.1:8000/logistics/despachos/1/](http://127.0.0.1:8000/logistics/despachos/1/)
-* **CRUD de Modelo Intermedio:** [http://127.0.0.1:8000/logistics/detalles-despacho/](http://127.0.0.1:8000/logistics/detalles-despacho/)
-* **Panel Administrativo:** [http://127.0.0.1:8000/admin/](http://127.0.0.1:8000/admin/)
+Puntos de Acceso Principales
+
+    Despacho Transaccional con Rollback: http://127.0.0.1:8000/logistics/despacho/transaccional/
+
+    Panel Analítico de Logística: http://127.0.0.1:8000/logistics/reporte/
+
+    Catálogo Optimizado de Insumos: http://127.0.0.1:8000/logistics/materiales/
+
+    Panel Comercial de Ventas: http://127.0.0.1:8000/reportes/
+
+    Panel Administrativo Django: http://127.0.0.1:8000/admin/
