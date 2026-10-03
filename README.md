@@ -12,7 +12,7 @@
 
 **Proyecto:** UrbanTrend — Plataforma Textil Streetwear y Sistema Logístico Avanzado con Django ORM y SQLite
 
-**Repositorio GitHub:** https://github.com/Jesus-Rocha-B/Django_Lab06.git
+**Repositorio GitHub:** https://github.com/ErickGamarra/Django_Lab07
 
 ---
 
